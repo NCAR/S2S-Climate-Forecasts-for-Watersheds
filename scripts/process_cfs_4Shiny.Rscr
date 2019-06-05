@@ -1,0 +1,91 @@
+#!/opt/R-3.2.3/bin//Rscript
+
+# ===========================================
+# Analyze Real-time CFSv2 forecasts &
+# Process forecasts for Rshiny
+# S. Baker, June 2017
+# ===========================================
+rm(list=ls())
+
+## Load libraries
+library(dplyr)
+library(ncdf4)
+source('/home/hydrofcst/s2s/scripts/hru4dig.R')
+
+## Directories
+dir_scripts = '/home/hydrofcst/s2s/scripts/'
+dir_in = '/d2/hydrofcst/s2s/huc_2wk_EnsMean/'
+dir_out = '/d2/hydrofcst/s2s/Rshiny_input/'
+
+## load cfsv2 doy avg data
+setwd(dir_scripts)
+doy_avg = readRDS('cfsv2_doyAVG.rds') # doy of fcsted day 1 of bi-weekly period
+doy_avg = transform(doy_avg, mult = ifelse(var_name == 'prate', var * (14 / 25.4), (var*1.8 + 32)))
+doy_avg$var = doy_avg$mult
+doy_avg$mult <- NULL
+
+## load & process forecast file names
+setwd(dir_in)
+fcst_files = list.files()
+temp_fil = t(as.data.frame(strsplit(fcst_files, '\\.')))
+file_df = cbind(fcst_files, substr(fcst_files,1,8), temp_fil[,2], substr(temp_fil[,3],1,3))
+
+## Create df of daily forecast means
+df_fcst = NULL
+for (i in 1:nrow(file_df)) {
+  nc_temp = nc_open(file_df[i,1]) 
+  
+  # read variables
+  if (file_df[i,3] == 'prate') {
+    var_raw = ncvar_get(nc_temp, file_df[i,3]) * 86400 * 14 / 25.4 # convert [mm/hr?s] to [in/(2wk period)]
+  } else {
+    var_raw = ( ncvar_get(nc_temp, file_df[i,3]) - 273.15 ) * 1.8 + 32 # K to F
+  }
+  
+  ## set fcst date & doy based on fcsted day 1 of bi-wkly period
+  fcst_date = as.Date(file_df[i,2], '%Y%m%d')
+  lead_k = file_df[i,4]
+  if (lead_k == '1_2') {
+    d = 0
+  } else if (lead_k == '2_3') {
+    d = 7
+  } else if (lead_k == '3_4') {
+    d = 14
+  }
+  doy_k = as.numeric(strftime(fcst_date + d, format = '%j'))
+  
+  # combine to data frame and bind with other fcsts
+  df = cbind.data.frame(fcst_date = fcst_date, var_name = file_df[i,3], lead = file_df[i,4], 
+                        var_value = var_raw, hru = ncvar_get(nc_temp, 'hru'), doy = doy_k)
+ 
+  df_fcst = rbind.data.frame(df_fcst, df)
+}
+
+# average by forecast date
+df_avg = df_fcst %>% group_by(fcst_date, var_name, lead, hru, doy) %>% summarise(mean(var_value))
+df_avg$hru = as.character(hru4dig(as.matrix(df_avg$hru))) # make hru code 4 digits
+df_avg$fcst_date = as.Date(df_avg$fcst_date, '%Y%m%d')
+colnames(df_avg) <- c('fcst_date', 'var_name', 'lead', 'hru', 'doy', 'var_value')
+# df_avg$doy = as.numeric(strftime(df_avg$fcst_date, format = '%j'))
+
+# merge and calculate anomalies
+df_anom = left_join(df_avg, doy_avg, by = c('hru', 'lead', 'doy', 'var_name'))
+df_anom$anom = df_anom$var_value - df_anom$var
+df_anom$var_value <- df_anom$var <- df_anom$doy <- NULL
+
+# process before saving
+df_anom = as.data.frame(df_anom)
+df_anom$fcst_date = as.factor(df_anom$fcst_date)
+df_anom$hru = as.factor(df_anom$hru)
+df_anom = df_anom[order(df_anom$hru),]
+
+## save df
+setwd(dir_out)
+saveRDS(df_anom, 'realtimeCFS_anom.rds')
+
+## copy to s2s app
+message("copying to web")
+#system("chmod 664 /d2/hydrofcst/s2s/Rshiny_input/realtimeCFS_anom.rds")
+#system("scp /d2/hydrofcst/s2s/Rshiny_input/realtimeCFS_anom.rds andywood@hydro-c1-web.rap.ucar.edu:/d1/www/html/s2s/S2S-app/realtime/")
+#system("scp /d2/hydrofcst/s2s/Rshiny_input/realtimeCFS_anom.rds sabaker@hydro-c1-web.rap.ucar.edu:/opt/srv/shiny-server/S2S-app/")
+system('echo "put /d2/hydrofcst/s2s/Rshiny_input/realtimeCFS_anom.rds /d1/www/html/s2s/S2S-app/realtime/" | sftp -i /home/hydrofcst/.ssh/hydrotxfr hydrofcst@hydro-c1-web')

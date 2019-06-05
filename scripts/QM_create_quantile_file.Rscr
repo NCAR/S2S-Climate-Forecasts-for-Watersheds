@@ -1,0 +1,158 @@
+#!/opt/R-3.2.3/bin//Rscript
+
+# ===========================================
+# Quantile Mapping of CFSv2
+# S. Baker, Oct 2017
+# ===========================================
+rm(list=ls())
+
+## Load libraries
+library(dplyr)
+library(ggplot2)
+library(doParallel)
+library(data.table)
+
+## huc4 id function
+source('/home/sabaker/s2s/analysis/scripts/cfsv2_analysis/huc4_id.R')
+source('/home/sabaker/s2s/analysis/scripts/cfsv2_analysis/hru4dig.R')
+
+## Directories
+dir_data= '/home/sabaker/s2s/analysis/files/cfsv2_files/2wk_analysis/'
+setwd(dir_data)
+
+##### ===== load data ===== #####
+## cfsv2 data -- prate
+cfs_pr_1.14 = readRDS('cfsv2_prate_anom_1to14day.rds')
+cfs_pr_8.21 = readRDS('cfsv2_prate_anom_8to21day.rds')
+cfs_pr_15.28 = readRDS('cfsv2_prate_anom_15to28day.rds')
+cfs_pr_1.14$fcst_date <- cfs_pr_8.21$fcst_date <- cfs_pr_15.28$fcst_date <-NULL
+colnames(cfs_pr_1.14) <- colnames(cfs_pr_8.21) <- colnames(cfs_pr_15.28) <- c('date', 'doy', 'hru', 'var','doyAvg','anom')
+
+## cfsv2 data -- tmp2m
+cfs_tm_1.14 = readRDS('cfsv2_tmp2m_anom_1to14day.rds')
+cfs_tm_8.21 = readRDS('cfsv2_tmp2m_anom_8to21day.rds')
+cfs_tm_15.28 = readRDS('cfsv2_tmp2m_anom_15to28day.rds')
+cfs_tm_1.14$fcst_date <- cfs_tm_8.21$fcst_date <- cfs_tm_15.28$fcst_date <- NULL
+colnames(cfs_tm_1.14) <- colnames(cfs_tm_8.21) <- colnames(cfs_tm_15.28) <- c('date', 'doy', 'hru', 'var','doyAvg','anom')
+
+## nldas data -- prate & tmp2m
+nld_pr = readRDS('nldas_prate_anom_1to14day.rds')
+nld_tm = readRDS('nldas_tmp2m_anom_1to14day.rds')
+nld_pr$fcst_date <- nld_tm$fcst_date <- NULL
+colnames(nld_tm) <- colnames(nld_pr) <- c('date', 'doy', 'hru', 'var','doyAvg','anom')
+
+### === read hru ids
+hru_id = hru4dig(read.table('/home/sabaker/s2s/analysis/scripts/cfsv2_analysis/huc4_id.txt'))
+colnames(hru_id) <- c('hru', 'name')
+hru_vec = unique(cfs_pr_1.14$hru)
+#hru_vec = subset(hru_id, hru %in% hru_vec) #0904 doesnt exist...
+
+# ##### ===== Mean of each day's forecasts ===== #####
+# cfs_pr_1.14 = cfs_pr_1.14 %>% group_by(fcst_date,hru) %>% summarise_each(funs(mean))
+# cfs_pr_8.21 = cfs_pr_8.21 %>% group_by(fcst_date,hru) %>% summarise_each(funs(mean))
+# cfs_pr_15.28 = cfs_pr_15.28 %>% group_by(fcst_date,hru) %>% summarise_each(funs(mean))
+# 
+# cfs_tm_1.14 = cfs_tm_1.14 %>% group_by(fcst_date,hru) %>% summarise_each(funs(mean))
+# cfs_tm_8.21 = cfs_tm_8.21 %>% group_by(fcst_date,hru) %>% summarise_each(funs(mean))
+# cfs_tm_15.28 = cfs_tm_15.28 %>% group_by(fcst_date,hru) %>% summarise_each(funs(mean))
+
+##### ===== Subset for a hru ===== #####
+cfs_ls = list(cfs_pr_1.14, cfs_pr_8.21, cfs_pr_15.28,
+              cfs_tm_1.14, cfs_tm_8.21, cfs_tm_15.28)
+nld_ls = list(nld_pr, nld_pr, nld_pr,
+              nld_tm, nld_tm, nld_tm)
+# var_v = c('prate_1.14','prate_8.21','prate_15.28','tmp2m_1.14','tmp2m_8.21','tmp2m_15.28')
+var_v = matrix(c('prate','1_2','prate','2_3','prate','3_4',
+                 'tmp2m','1_2','tmp2m','2_3','tmp2m','3_4'), 
+               ncol =2, byrow = T)
+
+
+beg_time = Sys.time()
+## lead and variable loop
+df_pred <- list()
+for (i in 1:6) {
+  require(dplyr)
+  require(data.table)
+
+  ## inputs
+  cfs_df = data.table(cfs_ls[[i]])
+  nld_df = data.table(nld_ls[[i]])
+  var = var_v[i,1]
+  lead = var_v[i,2]
+  
+  ## hru loop  
+  for (j in 1:length(hru_vec)) {
+    
+    ## create df with cfs & nld
+    cfs_df_hru = data.table(na.omit(left_join(nld_df[hru == hru_vec[j]],
+                                              cfs_df[hru == hru_vec[j]], by = c('doy', 'hru','date'),
+                                              suffix = c('.nld', '.cfs'))))
+    ## doy loop
+    for (k in 1:365) {
+      ## average accounting for beginning and end date wrap 1999 - 2010
+      if (k <= 7 ) {
+        cfs_df_k = cfs_df_hru[doy >= (365 + k - 7)  | doy <= (k + 7)]
+      } else if (k >= 360) {
+        cfs_df_k = cfs_df_hru[doy >= (k - 7)  | doy <= (k - 365 + 7)]
+      } else {
+        cfs_df_k = cfs_df_hru[doy >= (k - 7) & doy <= (k + 7)]
+      }
+      
+      ## create quantiles for observations and model
+      delta = 0.01 #0.005 - 1.47 mins #0.01 - 1.32
+      obs_k = quantile(t(cfs_df_k$var.nld), probs = seq(0, 1, delta))
+      mdl_k = quantile(t(cfs_df_k$var.cfs), probs = seq(0, 1, delta))
+
+      ## change units
+      if (var == 'prate') {
+        obs_k = as.vector(obs_k) * (14 / 25.4)
+        mdl_k = as.vector(mdl_k) * (14 / 25.4)
+      } else {
+        obs_k = as.vector(obs_k) * 1.8 + 32
+        mdl_k = as.vector(mdl_k) * 1.8 + 32
+      } 
+      
+      # df_pred[[k]] = data.frame(var = var, doy = k, hru = hru_vec[j], quant = seq(0, 1, delta), nld_val = obs_k, cfs_val = mdl_k)
+      df_pred[[paste0(var,'.',lead,'.hru.',hru_vec[j],'.doy.',k)]] = data.frame(quant = seq(0, 1, delta), nld_val = obs_k, cfs_val = mdl_k)
+    }
+  }
+}
+Sys.time() - beg_time # total time to run
+
+
+# cl = makeCluster(6)
+# registerDoParallel(cl)
+# 
+# ## run function ~7 mins
+# pred = foreach (i = 1:6) %dopar% {
+#   require(data.table)
+#   cfs_df = data.table(cfs_ls[[i]])
+#   nld_df = data.table(nld_ls[[i]])
+#   var = var_v[i,1]
+#   lead = var_v[i,2] 
+#   try(QM_var_leads(cfs_df, nld_df, hru_vec, var, lead))
+# }
+# Sys.time() - beg_time # total time to run
+# 
+# stopCluster(cl)
+
+
+
+# ## save in correct format 
+# var_lead = strsplit(as.character(ls_pred$var), split = '_')
+# test = matrix(unlist(var_lead), ncol =2, byrow = T)
+# ls_pred = cbind(test,ls_pred)
+# ls_pred$hru = as.character(ls_pred$hru)
+# ls_pred$var <- NULL
+# colnames(ls_pred) <- c('var', 'lead', 'doy', 'hru', 'quant', 'nld_val', 'cfs_val')
+# 
+# ## change units of variables
+# ls_pred = transform(ls_pred, nld_val_2 = ifelse(var == 'prate', nld_val * (14 / 25.4), (nld_val*1.8 + 32)), 
+#                  cfs_val_2 = ifelse(var == 'prate', cfs_val * (14 / 25.4), (cfs_val*1.8 + 32)))
+# ls_pred$nld_val <- ls_pred$cfs_val <- NULL
+# colnames(ls_pred) <- c('var', 'lead', 'doy', 'hru', 'quant', 'nld_val', 'cfs_val')
+
+## save
+saveRDS(df_pred, file = 'QM_cfsv2.nldas_lists.rds')
+message('copying to hydrofcst dir')
+system("cp /home/sabaker/s2s/analysis/files/cfsv2_files/2wk_analysis/QM_cfsv2.nldas_lists.rds /d2/hydrofcst/s2s/cfsv2_processing/")

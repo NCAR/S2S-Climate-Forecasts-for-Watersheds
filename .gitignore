@@ -1,0 +1,16 @@
+# gitignore file
+
+# omit dirs
+scripts/old/
+scripts/logs/
+scripts/NLDAS_scripts/
+sb_scripts/
+d2_data/
+raw_data/
+
+# large files
+*.rds
+
+# ignore all . files and . folders
+.*/
+!/.gitignore

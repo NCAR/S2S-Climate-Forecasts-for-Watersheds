@@ -1,0 +1,203 @@
+#!/opt/R-3.2.3/bin//Rscript
+
+# ===========================================
+# Analyze Real-time CFSv2 forecasts &
+# Process forecasts for Rshiny
+# S. Baker, June 2017
+# ===========================================
+rm(list=ls())
+
+## Load libraries
+library(dplyr)
+library(ncdf4)
+library(data.table)
+library(lubridate)
+source('/home/hydrofcst/s2s/scripts/hru4dig.R')
+
+## Directories
+dir_scripts = '/home/hydrofcst/s2s/scripts/'
+dir_in = '/d2/hydrofcst/s2s/huc_2wk_EnsMean/'
+dir_data = '/d2/hydrofcst/s2s/cfsv2_processing/'
+dir_out = '/d2/hydrofcst/s2s/Rshiny_input/'
+dir_out_mon = '/d2/hydrofcst/s2s/Rshiny_input/saved_data/'
+
+## load cfsv2 doy avg data
+setwd(dir_scripts)
+doy_avg_cfs = readRDS('cfsv2_doyAVG.rds') # doy of fcsted day 1 of bi-weekly period
+doy_avg_cfs = transform(doy_avg_cfs, mult = ifelse(var_name == 'prate', var * (14 / 25.4), (var*1.8 + 32)))
+doy_avg_cfs$var = doy_avg_cfs$mult
+doy_avg_cfs$mult <- NULL
+doy_avg_cfs$lead = as.character(doy_avg_cfs$lead)
+doy_avg_cfs$var_name = as.character(doy_avg_cfs$var_name)
+
+## load nldas doy avg data
+doy_avg_nld = readRDS('nldas_doyAVG.rds') # doy of fcsted day 1 of bi-weekly period
+doy_avg_nld = transform(doy_avg_nld, mult = ifelse(var_name == 'prate', var * (14 / 25.4), (var*1.8 + 32)))
+doy_avg_nld$var = doy_avg_nld$mult
+doy_avg_nld$mult <- NULL
+doy_avg_nld$lead = as.character(doy_avg_nld$lead)
+doy_avg_nld$var_name = as.character(doy_avg_nld$var_name)
+
+## load cfsv2 QM tables
+setwd(dir_data)
+qm_ls = readRDS('QM_cfsv2.nldas_lists.rds') # doy of fcsted day 1 of bi-weekly period
+
+
+## load & process forecast file names
+setwd(dir_in)
+fcst_files = list.files()
+
+# check for bad files
+bad_ind = grep('.ncea.tmp', fcst_files)
+if (length(bad_ind) > 0){
+  print(paste('Bad files that need to be looked into/deleted:', paste(fcst_files[bad_ind], collapse = ',')))
+  fcst_files = fcst_files[-bad_ind]
+}
+
+# put files into df for processing
+temp_fil = t(as.data.frame(strsplit(fcst_files, '\\.'))) # fails if *.ncea.tmp files
+file_df = cbind(fcst_files, substr(fcst_files,1,8), temp_fil[,2], substr(temp_fil[,3],1,3))
+
+## load older forecasts and get new files to process
+setwd(dir_out)
+df_old_fcsts = readRDS('realtimeCFS_anom_QM.rds')
+file_new = filter(as.data.frame(file_df), file_df[,2] > format(max(as.Date(df_old_fcsts$fcst_date)), '%Y%m%d'))
+# when processing fails due to .pidxxxxxx.ncea.tmp - dont need to run below commented section
+
+## === RUN THIS IF DATA DIDNT PROCESS - date in earlier than most recent completed data processed
+## get recent differences (data that didnt process)
+# difs = setdiff(file_df[,2], unique(format((as.Date(df_old_fcsts$fcst_date)), '%Y%m%d')))
+# ind = which(as.Date(difs, '%Y%m%d') > max(as.Date(df_old_fcsts$fcst_date)) %m-% months(8))
+# ind_new = which(!is.na(match(file_df[,2], difs[ind])), TRUE) # recent dates not on site
+# file_new = as.data.frame(file_df)[ind_new,]
+
+## check old data
+# anyNA(df_old_fcsts)
+# test = df_old_fcsts %>% group_by(fcst_date) %>% summarize(count=n())
+# any(test$count != 2424)
+
+## Create df of daily forecast means
+setwd(dir_in)
+beg_time = Sys.time()
+df_fcst <- df <- fcst_ls <- NULL
+for (i in 1:nrow(file_new)) {
+  nc_temp = nc_open(as.character(file_new[i,1])) 
+  
+  # read variables
+  var_k = as.character(file_new[i,3])
+  if (var_k == 'prate') {
+    var_raw = ncvar_get(nc_temp, var_k) * 86400 * 14 / 25.4 # convert [mm/hr?s] to [in/(2wk period)]
+  } else {
+    var_raw = ( ncvar_get(nc_temp, var_k) - 273.15 ) * 1.8 + 32 # K to F
+  }
+  
+  ## set fcst date & doy based on fcsted day 1 of bi-wkly period
+  fcst_date = as.Date(as.character(file_new[i,2]), '%Y%m%d')
+  lead_k = as.character(file_new[i,4])
+  if (lead_k == '1_2') {
+    d = 0
+  } else if (lead_k == '2_3') {
+    d = 7
+  } else if (lead_k == '3_4') {
+    d = 14
+  }
+  doy_k = as.numeric(strftime(fcst_date + d, format = '%j')) #forecasted date (day 1)
+  hru_k = hru4dig(as.matrix(ncvar_get(nc_temp, 'hru')))
+  
+  ## get QM table for lead, var, doy
+  outside_df <- hru_ls <- NULL
+  for (j in 1:length(hru_k)) {
+    qm = qm_ls[[paste0(var_k,'.',lead_k,'.hru.',hru_k[j],'.doy.',doy_k)]]
+    
+    mdl_quant = sapply(var_raw[j], function(x) approx(qm$cfs_val, qm$quant, xout=x, rule = 2)) #model quantile
+    
+    ## check if quantile is inside or outside bounds
+    if (any(mdl_quant[2,] >= 1 | mdl_quant[2,] <= 0)) {
+      warning(paste0('variable outside bounds hru ', hru_k[j], ' (j=', j, ') doy ', doy_k, '; quant = ', mdl_quant[2,])) #warning if quantile is outside bounds
+      
+      ## extrapolate when outside quantile bounds
+      extrap = spline(x = qm$cfs_val, y = qm$nld_val, method = 'natural', xout = var_raw[j])
+      hru_ls[[j]] = data.table(hru_k[j], extrap$y) # list of hru and qm fcst
+    } else {
+      
+      ## normal - linear interpolation
+      mdl_pred = sapply(mdl_quant[2,], function(x) approx(qm$quant, qm$nld_val, xout=x, rule = 2)) #obs pred based on mdl quant.
+      hru_ls[[j]] = data.table(hru_k[j], mdl_pred[2,]) # list of hru and qm fcst
+    }
+  }
+  
+  ## bind raw and qm forecast
+  fcst_ls[[i]] <- rbind(data.table(fcst_date, 'QM', var_k, lead_k ,doy_k, do.call(rbind, hru_ls)),
+                        data.table(fcst_date, 'Raw', var_k, lead_k ,doy_k, hru_k, var_raw), use.names = F)
+}
+
+df_all <- rbindlist(fcst_ls)
+colnames(df_all) <- c('fcst_date', 'fcst_type', 'var_name', 'lead', 'doy', 'hru', 'val')
+df_all$val = as.numeric(df_all$val)
+
+# average by forecast date (ens mean)
+df_avg = df_all %>% group_by(fcst_date, fcst_type, var_name, lead, hru, doy) %>% summarise(mean(val))
+df_avg_raw = filter(df_avg, fcst_type == 'Raw')
+df_avg_qm = filter(df_avg, fcst_type == 'QM')
+
+# merge and calculate anomalies
+df_anom_raw = left_join(df_avg_raw, doy_avg_cfs, by = c('hru', 'lead', 'doy', 'var_name'))
+df_anom_nld = left_join(df_avg_qm, doy_avg_nld, by = c('hru', 'lead', 'doy', 'var_name'))
+df_anom = rbind.data.frame(df_anom_raw, df_anom_nld)
+colnames(df_anom) <- c('fcst_date', 'fcst_type', 'var_name', 'lead', 'hru', 'doy', 'cfs_val', 'clim_val')
+df_anom$anom = df_anom$cfs_val - df_anom$clim_val
+df_anom$cfs_val <- df_anom$clim_val <- df_anom$doy <- NULL
+
+# process before saving
+df_anom = as.data.frame(df_anom)
+df_anom$fcst_date = as.factor(df_anom$fcst_date)
+df_anom$hru = as.factor(df_anom$hru)
+
+## bind with old data and order
+df_anom = rbind.data.frame(df_old_fcsts, df_anom)
+
+## sort by date (newest first); convert to factor; sort by hru
+## only when adding older data to df
+# df_anom$fcst_date = as.Date(as.character(df_anom$fcst_date), '%Y-%m-%d')
+# df_anom = df_anom[rev(order(df_anom$fcst_date)),]
+# df_anom$fcst_date = as.factor(df_anom$fcst_date)
+
+df_anom = df_anom[order(df_anom$hru),]
+
+Sys.time() - beg_time # total time to run
+
+## Save - but check the number of forecasts
+old_num = df_old_fcsts %>% group_by(fcst_date) %>% summarize(count=n())
+new_num = df_anom %>% group_by(fcst_date) %>% summarize(count=n())
+
+new_date = max(as.Date(df_anom$fcst_date))
+
+## save seperate files every month and decrease size of data
+if (day(new_date) == 1) {
+  date_end = new_date %m-% months(8)
+  
+  # filter previous month of data
+  date_mon = new_date %m-% months(1)
+  mSpan <- seq.Date(from=date_mon, to=new_date, by="day")
+  df_mon = subset(df_anom, as.Date(fcst_date) %in% mSpan)
+  
+  # save previous month of data
+  setwd(dir_out_mon)
+  saveRDS(df_mon, paste0('cfsv2_data_monyr_', month(date_mon),'.', year(date_mon),'.rds'))
+  
+  # keep only past 8 months of data 
+  xSpan <- seq.Date(from=date_end, to=new_date, by="day")
+  df_anom = subset(df_anom, as.Date(fcst_date) %in% xSpan)
+}
+
+## if new data, save file
+if (nrow(old_num) < nrow(new_num)) {
+  ## save df
+  message('saving new file - realtimeCFS_anom_QM.rds')
+  setwd(dir_out)
+  saveRDS(df_anom, 'realtimeCFS_anom_QM.rds')
+}
+
+## copy to s2s app
+message("copying to web")
+system('echo "put /d2/hydrofcst/s2s/Rshiny_input/realtimeCFS_anom_QM.rds /d1/www/html/s2s/S2S-app/realtime/" | sftp -i /home/hydrofcst/.ssh/hydrotxfr hydrofcst@hydro-c1-web')
