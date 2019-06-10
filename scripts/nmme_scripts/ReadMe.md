@@ -1,4 +1,5 @@
 # Download NMME data from IRI in real-time
+crontab executes `exec_process_nmme_iri.bash` which calls the scripts below.
 
 ### Download nmme for current month (after the 8th)
 `dwnld_nmme_fcsts_iri.csh`
