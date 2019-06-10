@@ -1,4 +1,4 @@
-# Scripts for processing NMME hindcasts (runas hydrofcst)
+# Scripts for processing NMME hindcasts
  NOTE: Edited process to allow for downloading files from IRI (mainly so we could get new NASA hindcasts). This process hasnt been tested with other NMME models.
 
 1. Preliminary download and data aggregation
