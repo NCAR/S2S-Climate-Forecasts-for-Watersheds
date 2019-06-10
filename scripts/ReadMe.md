@@ -14,26 +14,26 @@
    - NMME master script: */home/hydrofcst/s2s/scripts/nmme_scripts/exec_process_nmme_iri.bash*
    
 ### CFSv2 Processing 
-- *exec_process_cfs.bash*: runs daily after all forecasts are produced and downloaded from /d2/anewman/wrf_hydro/cfsv2.
-- *process_cfs_realtime.csh*: script converst grib2 to netcdfs, regrids, cuts domain, takes weighted average for HUC4s, averages to bi-weekly time periods, and takes ensemble averages for each initialization (every 6-hrs).
-- *process_cfs_4Shiny_QM.Rscr*: analyzes real-time forecasts, calculates anomalies, QM fcst, saves old data once per month and reduces data displayed on site to keep site fast
+- `exec_process_cfs.bash`: runs daily after all forecasts are produced and downloaded from /d2/anewman/wrf_hydro/cfsv2.
+- `process_cfs_realtime.csh`: script converst grib2 to netcdfs, regrids, cuts domain, takes weighted average for HUC4s, averages to bi-weekly time periods, and takes ensemble averages for each initialization (every 6-hrs).
+- `process_cfs_4Shiny_QM.Rscr`: analyzes real-time forecasts, calculates anomalies, QM fcst, saves old data once per month and reduces data displayed on site to keep site fast
 - If there is an error that occurs and the site is not updating, start by looking at the raw processed CFSv2. Sometimes the forecasts produce bad files with the extention .pidxxxxxx.ncea.tmp. These need to be deleted to run the R script to completion. 
 
 ### NMME Processing
-- *exec_process_nmme_iri.bash*: runs monthly to download, process, and update site.
-- *dwnld_nmme_fcsts_iri.csh*: downloads the NMME ensemble average from the IRI website. Sometimes the naming conventions change and will need to be updated here. 
-- *process_nmme_fcst_iri.csh*: processing NMME the same as CFSv2 (see above).
-- *process_nmme_realtime_iri.Rscr*: ananlyze real-time NMME forecast, calculating anomalies, ensemble average, copying to website folder.
-- *hcst_scripts/* used to reprocess hindcasts of NMME when necessary. See ReadMe in folder for information.
+- `exec_process_nmme_iri.bash`: runs monthly to download, process, and update site.
+- `dwnld_nmme_fcsts_iri.csh`: downloads the NMME ensemble average from the IRI website. Sometimes the naming conventions change and will need to be updated here. 
+- `process_nmme_fcst_iri.csh`: processing NMME the same as CFSv2 (see above).
+- `process_nmme_realtime_iri.Rscr`: ananlyze real-time NMME forecast, calculating anomalies, ensemble average, copying to website folder.
+- `hcst_scripts/` used to reprocess hindcasts of NMME when necessary. See ReadMe in folder for information.
 
 ### Notes for S2S site:
-1. Log in to directory of site
-   - ssh -X user@hydro-c1-web.rap.ucar.edu (note - might only work on my account)
-   - note - I'm not sure if others can do these steps with current permissions
+1. Log into directory of site.
+   - `ssh -X userXXX@hydro-c1-web.rap.ucar.edu`
+   - Note - This might only work on my account. I'm not sure if others can do these steps with current permissions
    - Navigate to : /opt/srv/shiny-server/S2S-app/
 
 2. The shiny server now needs to be restarted so that the server can read the new file. Tor made it so we can re
-start on our accoutn
+start on our account.
    - `sudo /bin/systemctl restart shiny-server.service`
    - You can use the following commands for systemctl: start stop restart status
    - Note the "sudo /bin/systemctl" part is important syntax.
