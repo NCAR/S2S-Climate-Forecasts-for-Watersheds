@@ -1,5 +1,5 @@
 # Scripts for processing NMME hindcasts (runas hydrofcst)
-   - NOTE: edited process to allow for downloading files from IRI (mainly so we could get new NASA hindcasts). This process hasnt been tested with other NMME models.
+ NOTE: Edited process to allow for downloading files from IRI (mainly so we could get new NASA hindcasts). This process hasnt been tested with other NMME models.
 
 1. Preliminary download and data aggregation
    - dwnld_nmme_hcsts_iri.csh 
@@ -15,7 +15,7 @@
      `system('echo "put /d2/hydrofcst/s2s/nmme_processing/R_output/nmme_nldas_stats.rds /d1/www/html/s2s/S2S-app/realtime/" | sftp -i /home/hydrofcst/.ssh/hydrotxfr hydrofcst@hydro-c1-web')`
 
 4. Once the file is copied to hydro-c1-web, it needs to be copied to the correct folder to be displayed online. 
-   - `ssh -X userXXX@hydro-c1-web.rap.ucar.edu 
+   - `ssh -X userXXX@hydro-c1-web.rap.ucar.edu`
    - Note - I'm not sure if others can do these steps with current permissions
    - Navigate to : /opt/srv/shiny-server/S2S-app/
    - Copy file to web app folder: nmme_nldas_stats.rds: `cp /d1/www/html/s2s/S2S-app/realtime/nmme_nldas_stats.rds nmme_nldas_stats.rds`
@@ -25,6 +25,6 @@
    - You can use the following commands for systemctl: start stop restart status
    - Note the "sudo /bin/systemctl" part is important syntax.
 
-Contact Tor with any problems here
+Contact Tor with any problems here.
 
-   - Note: copied files from sabaker
+Note: copied files from sabaker
