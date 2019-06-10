@@ -10,6 +10,7 @@ raw_data/
 
 # large files
 *.rds
+*.Rhistory
 
 # ignore all . files and . folders
 .*/
