@@ -8,10 +8,13 @@ scripts/nmme_scripts/old/
 sb_scripts/
 d2_data/
 raw_data/
+S2S-app/www/
+S2S-app/HUC4/*
 
 # large files
 *.rds
 *.Rhistory
+*.Rdata
 
 # ignore all . files and . folders
 .*/
