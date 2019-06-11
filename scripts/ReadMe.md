@@ -27,14 +27,4 @@
 - `hcst_scripts/` used to reprocess hindcasts of NMME when necessary. See ReadMe in folder for information.
 
 ### Notes for S2S site:
-1. Log into directory of site.
-   - `ssh -X userXXX@hydro-c1-web.rap.ucar.edu`
-   - Note - This might only work on my account. I'm not sure if others can do these steps with current permissions
-   - Navigate to : /opt/srv/shiny-server/S2S-app/
-
-2. The shiny server now needs to be restarted so that the server can read the new file. Tor made it so we can re
-start on our account.
-   - `sudo /bin/systemctl restart shiny-server.service`
-   - You can use the following commands for systemctl: start stop restart status
-   - Note the "sudo /bin/systemctl" part is important syntax.
-   - Contact Tor with any problems here
+Output from these scripts are referenced in the S2S-app folder which contains the files for the web-app.

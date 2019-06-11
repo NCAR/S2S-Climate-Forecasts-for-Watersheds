@@ -1,5 +1,5 @@
 # S2S Climate Outlooks for Watersheds web-app
-This web-app is built with R Shiny and can be found at [http://hydro.rap.ucar.edu/s2s/](http://hydro.rap.ucar.edu/s2s/).
+This web-app is built with R Shiny and can be found at [http://hydro.rap.ucar.edu/s2s/](http://hydro.rap.ucar.edu/s2s/). The data files referenced in the ui, server, and global files are not added to GitHub because of size. The data files for the real-time part of the web-app are produced using scripts found in the scripts/ directory.
 
 ### Notes for website
 1. Log into directory of site.
