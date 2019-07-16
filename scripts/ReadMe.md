@@ -28,3 +28,9 @@
 
 ### Notes for S2S site:
 Output from these scripts are referenced in the S2S-app folder which contains the files for the web-app.
+
+### CFSv2 Rerun
+- Rerun scripts if there is an error or processing didnt occur for a specific day
+- `get_rawCFSv2_grb2Data_rerun.bash`: download raw data - need to update dates
+- `exec_process_cfs_rerun.bash`: process raw data to watershed scale - need to update dates
+- rerun Rscripts which will copy to S2S web-app

@@ -8,7 +8,8 @@
 set input_date = $1 # 2017053000
 
 # ------ settings --------
-set GribDir = /d2/anewman/wrf_hydro/cfsv2
+#set GribDir = /d2/anewman/wrf_hydro/cfsv2 # old dir
+set GribDir = /d2/hydrofcst/s2s/rawGrb2_dwnld
 set DataDir = /d2/hydrofcst/s2s
 set TmpDir = $DataDir/tmpdir
 set HUCdir_day = $DataDir/huc_daily
