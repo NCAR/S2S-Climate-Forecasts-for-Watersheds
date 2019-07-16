@@ -26,15 +26,13 @@
 - `process_nmme_realtime_iri.Rscr`: ananlyze real-time NMME forecast, calculating anomalies, ensemble average, copying to website folder.
 - `hcst_scripts/` used to reprocess hindcasts of NMME when necessary. See ReadMe in folder for information.
 
----
-
-### CFSv2 Rerun
+### CFSv2 Rerun (when errors occur)
 - Rerun scripts if there is an error or processing didnt occur for a specific day
 - `get_rawCFSv2_grb2Data_rerun.bash`: download raw data - need to update dates
 - `exec_process_cfs_rerun.bash`: process raw data to watershed scale - need to update dates
 - rerun Rscripts which will copy to S2S web-app
 
 ### Notes for S2S site
-Output from these scripts are referenced in the S2S-app folder which contains $
+Output from these scripts are referenced in the S2S-app folder which contains the files for the web-app.
 
 
