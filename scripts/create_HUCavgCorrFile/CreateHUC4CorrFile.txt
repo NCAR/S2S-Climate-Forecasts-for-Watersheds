@@ -1,0 +1,72 @@
+### === Create correspondence (mapping) file to average to hucs - only needs to be done once === ###
+Ssame process for CFSv2, NMME, and NLDAS.
+
+# Need netcdf to contain only one timestep and one variable on a long lat grid
+> ncks -v lon_110,lat_110,time,tair_avg -d time,2 NLDAS_1999.nc ~/s2s/nldas/19990102_tair.nc
+
+# change variable name - variables have to match python script (tmp_2m, ...)
+> ncrename -v tair_avg,tmp_2m NLDAS_1999.nc
+
+# Convert netcdf to geoTIFF
+> gdalwarp -t_srs EPSG:4326  19990102_tair.nc 19990102_tair.tif
+> gdal_translate -a_srs EPSG:4326 19990102_tair.tif 19990102_tair2.tif (maybe should have just done 
+this...)
+
+# === in the sequence of commands below, the following are soft links (eg, ln -s /dir/):
+Commands are executed from:  
+/home/andywood/proj/overtheloop/scripts/ens_forc/grid2poly/mapping/poly2poly-serial
+
+> python grid2gpkg.py /home/sabaker/s2s/nldas/19990102_tair2.tif /home/sabaker/s2s/nldas/temp2m_grid.gpkg
+
+
+# === now check this gpkg to see what the feature id should be:
+> ogrinfo -al temp2m_grid.gpkg | more
+...
+OGRFeature(temp2m_grid):1
+  id (Integer) = 0              <--- it is "id"
+  i_index (Integer) = 1
+  j_index (Integer) = 1
+  lon_cen (Real) = -174.75
+  lat_cen (Real) = 74.75
+  CELLVALUE (Real) = 273
+  POLYGON ((-175 75 0,-174.5 75.0 0,-174.5 74.5 0,-175.0 74.5 0,-175 75 0))
+  ...
+
+# === now do the same to find a unique feature id for each target polygon
+> ogrinfo -al CorrTbl/HUC4/NHDPlusv2_HUC4.gpkg | more
+...
+OGRFeature(NHDPlusv2_HUC4):1
+  HUC4 (String) = 0101     <-- it is "HUC4", since HUC2 is same for all polygons
+  HUC2 (Integer) = 1
+  POLYGON ((-68.455535407999946 48.09
+  ...
+
+# === now run the command to make the correspondence file (and cross fingers)
+> python mapping/poly2poly-serial/poly2poly.py CorrTbl/HUC4/NHDPlusv2_HUC4.gpkg HUC4 ./temp2m_grid.gpkg id 
+GRID ./mapping.cfsv2_to_NHDPlusHUC4.nc
+
+# second example
+> python poly2poly.py /home/sabaker/s2s/cfsv2/files/CorrespondenceTable/HUC4/NHDPlusv2_HUC4.gpkg HUC4  /home/sabaker/s2s/nldas/NLDAS_grid2.gpkg id GRID /home/sabaker/s2s/nldas/mapping.NLDAS_to_NHDPlusHUC4_2.nc
+
+(it worked!)
+
+# === check the resulting file
+> ncdump  mapping.cfsv2_to_NHDPlusHUC4.nc | more
+
+# I note that each polygon has a decent # of grid cell overlaps, so that's good:
+... files
+ overlaps = 92, 36, 39, 37, 16, 46, 22, 53, 31, 50, 31, 25, 37, 36, 40, 35,
+    23, 25, 35, 19, 41, 18, 20, 23, 23, 18, 91, 99, 63, 63, 65, 68, 56, 19,
+    27, 27, 13, 18, 33, 47, 22, 24, 65, 16, 50, 23, 36, 37, 55, 14, 35, 37,
+    40, 31, 43, 18, 39, 47, 35, 31, 43, 26, 37, 16, 29, 18, 12, 14, 13, 26,
+    16, 22, 7, 41, 52, 78, 34, 53, 36, 24, 19, 37, 43, 32, 30, 50, 47, 41,
+    30, 22, 13, 26, 31, 18, 28, 19, 16, 16, 45, 34, 56, 31, 29, 30, 31, 27,
+    30, 32, 43, 29, 16, 29, 22, 47, 28, 34, 37, 31, 30, 20, 21, 37, 15, 19,
+    13, 36, 25, 32, 25, 25, 38, 29, 17, 45, 38, 39, 15, 26, 46, 51, 28, 28,
+    16, 32, 34, 26, 37, 23, 89, 30, 28, 40, 14, 27, 32, 28, 23, 18, 34, 38,
+    46, 31, 46, 38, 23, 28, 34, 33, 25, 40, 20, 39, 33, 43, 10, 15, 11, 24,
+    28, 49, 41, 18, 20, 31, 32, 52, 26, 60, 48, 23, 25, 44, 22, 22, 29, 39,
+    37, 22, 17, 25, 10, 39 ;
+
+### === done with correspondence file creation - only needs to be done once === ###
+
