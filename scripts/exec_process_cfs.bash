@@ -8,6 +8,9 @@ grab_date=`date +%Y%m%d --date "${today} -1 day"`
 
 script_dir=/home/hydrofcst/s2s/scripts
 
+# download raw CFSv2 data
+${script_dir}/get_rawCFSv2_grb2Data.bash
+
 # process cfs fcsts
 for init_hr in 00 06 12 18
 do

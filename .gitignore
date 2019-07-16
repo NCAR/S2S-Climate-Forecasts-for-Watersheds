@@ -11,10 +11,14 @@ raw_data/
 S2S-app/www/
 S2S-app/HUC4/*
 
+# exculde all except one file in folder
+S2S-app/realtime/*
+!S2S-app/realtime/ReadMe.md
+
 # large files
 *.rds
 *.Rhistory
-*.Rdata
+*.RData
 
 # ignore all . files and . folders
 .*/
