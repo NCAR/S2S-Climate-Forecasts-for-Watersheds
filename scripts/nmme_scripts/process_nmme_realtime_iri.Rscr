@@ -1,4 +1,4 @@
-#!/opt/R-3.2.3/bin//Rscript
+#!/opt/R/bin/Rscript
 
 # ================================================
 # Step 1 - 
@@ -142,7 +142,7 @@ df_final$fcst_date = as.factor(df_final$fcst_date)
 
 ## save fcsts
 setwd(dir_out)
-saveRDS(df_final, file = 'nmme_realtime_fcsts.rds')
+saveRDS(df_final, file = 'nmme_realtime_fcsts.rds', version=2)
  
 ## copy to s2s app
 message("copying to web")

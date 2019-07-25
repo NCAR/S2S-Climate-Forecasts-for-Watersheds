@@ -6,6 +6,9 @@
 
 set Fcst = $1 #201708
 
+# source cdo since not in path currently
+source /opt/etc/csh/opt.csh
+
 # ------ settings --------
 set baseDir = /d2/hydrofcst/s2s/nmme_processing
 set rawDir = $baseDir/rawNetCDF

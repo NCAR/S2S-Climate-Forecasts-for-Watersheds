@@ -19,4 +19,4 @@ done
 
 # process for shiny app and copy
 #${script_dir}/process_cfs_4Shiny.Rscr
-${script_dir}/process_cfs_4Shiny_QM.Rscr
+#${script_dir}/process_cfs_4Shiny_QM.Rscr

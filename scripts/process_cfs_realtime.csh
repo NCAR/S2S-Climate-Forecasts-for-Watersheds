@@ -7,6 +7,10 @@
 
 set input_date = $1 # 2017053000
 
+# having issues with adding cdo to $PATH - source here
+source /opt/etc/csh/opt.csh
+echo $PATH
+
 # ------ settings --------
 #set GribDir = /d2/anewman/wrf_hydro/cfsv2 # old dir
 set GribDir = /d2/hydrofcst/s2s/rawGrb2_dwnld
@@ -57,22 +61,22 @@ foreach fcst_date ($input_date)
       # 1-2 wks
       ncks -O -d time,0,13 $hucDay_out $HUCdir_2wk_ens/$File:t:r.1_2wk.nc
       cdo timselmean,14 $HUCdir_2wk_ens/$File:t:r.1_2wk.nc $out_file.1_2wkAvg.nc
-      # add back in hru variable
-      ncks -A -M -v hru $HUCdir_2wk_ens/$File:t:r.1_2wk.nc  $out_file.1_2wkAvg.nc
+      # add back in hru variable - new cdo doesnt delete the dim so not necessary
+      #ncks -A -M -v hru $HUCdir_2wk_ens/$File:t:r.1_2wk.nc  $out_file.1_2wkAvg.nc
       \rm $HUCdir_2wk_ens/$File:t:r.1_2wk.nc
 
       # 2-3 wks
       ncks -O -d time,7,20 $hucDay_out $HUCdir_2wk_ens/$File:t:r.2_3wk.nc
       cdo timselmean,14 $HUCdir_2wk_ens/$File:t:r.2_3wk.nc $out_file.2_3wkAvg.nc
-      # add back in hru variable
-      ncks -A -M -v hru $HUCdir_2wk_ens/$File:t:r.2_3wk.nc $out_file.2_3wkAvg.nc
+      # add back in hru variable - new cdo doesnt delete the dim so not necessary
+      #ncks -A -M -v hru $HUCdir_2wk_ens/$File:t:r.2_3wk.nc $out_file.2_3wkAvg.nc
       \rm $HUCdir_2wk_ens/$File:t:r.2_3wk.nc 
 
       # 3-4 wks
       ncks -O -d time,14,27 $hucDay_out $HUCdir_2wk_ens/$File:t:r.3_4wk.nc
       cdo timselmean,14 $HUCdir_2wk_ens/$File:t:r.3_4wk.nc $out_file.3_4wkAvg.nc
-      # add back in hru variable
-      ncks -A -M -v hru $HUCdir_2wk_ens/$File:t:r.3_4wk.nc  $out_file.3_4wkAvg.nc
+      # add back in hru variable - new cdo doesnt delete the dim so not necessary
+      #ncks -A -M -v hru $HUCdir_2wk_ens/$File:t:r.3_4wk.nc  $out_file.3_4wkAvg.nc
       \rm $HUCdir_2wk_ens/$File:t:r.3_4wk.nc  
       \rm $hucDay_out
     end

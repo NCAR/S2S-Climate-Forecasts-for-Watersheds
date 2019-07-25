@@ -1,4 +1,4 @@
-#!/opt/R-3.2.3/bin//Rscript
+#!/opt/R/bin/Rscript
 
 # ===========================================
 # Analyze Real-time CFSv2 forecasts &
@@ -195,7 +195,7 @@ if (nrow(old_num) < nrow(new_num)) {
   ## save df
   message('saving new file - realtimeCFS_anom_QM.rds')
   setwd(dir_out)
-  saveRDS(df_anom, 'realtimeCFS_anom_QM.rds')
+  saveRDS(df_anom, 'realtimeCFS_anom_QM.rds', version=2)
 }
 
 ## copy to s2s app
