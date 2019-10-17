@@ -1,0 +1,6 @@
+# crontab tasks calling S2S website script
+
+# m h  dom mon dow   command
+0 15 * * * /home/hydrofcst/s2s/scripts/exec_process_cfs.bash
+0 0 9 * * /home/hydrofcst/s2s/scripts/nmme_scripts/exec_process_nmme_iri.bash
+

@@ -24,6 +24,9 @@ set scripts = /home/hydrofcst/s2s/scripts
 # use python v. 2.7 environment that contains netcdf
 set Python  = /d3/hydrofcst/miniconda3/envs/otl_env_py2/bin/python
 
+# goodDate refers to netCDF with hru dim, used to add back into new files
+set goodDate = 2019061100
+
 # ------ loop over fcst date, variable, ensemble -------
 foreach fcst_date ($input_date)
   foreach var (prate tmp2m)
@@ -82,9 +85,17 @@ foreach fcst_date ($input_date)
     end
 
     # average the ensembles for each 6 hr fcst
-    ncea $HUCdir_2wk_ens/$fcst_date.$var.01.1_2wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.02.1_2wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.03.1_2wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.04.1_2wkAvg.nc $HUCdir_2wk_ensMean/$fcst_date.$var.1_2wk_EnsAvg.nc
-    ncea $HUCdir_2wk_ens/$fcst_date.$var.01.2_3wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.02.2_3wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.03.2_3wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.04.2_3wkAvg.nc $HUCdir_2wk_ensMean/$fcst_date.$var.2_3wk_EnsAvg.nc
-    ncea $HUCdir_2wk_ens/$fcst_date.$var.01.3_4wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.02.3_4wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.03.3_4wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.04.3_4wkAvg.nc $HUCdir_2wk_ensMean/$fcst_date.$var.3_4wk_EnsAvg.nc
+    ncea -O $HUCdir_2wk_ens/$fcst_date.$var.01.1_2wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.02.1_2wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.03.1_2wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.04.1_2wkAvg.nc $HUCdir_2wk_ensMean/$fcst_date.$var.1_2wk_EnsAvg.nc
+    ncea -O $HUCdir_2wk_ens/$fcst_date.$var.01.2_3wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.02.2_3wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.03.2_3wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.04.2_3wkAvg.nc $HUCdir_2wk_ensMean/$fcst_date.$var.2_3wk_EnsAvg.nc
+    ncea -O $HUCdir_2wk_ens/$fcst_date.$var.01.3_4wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.02.3_4wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.03.3_4wkAvg.nc $HUCdir_2wk_ens/$fcst_date.$var.04.3_4wkAvg.nc $HUCdir_2wk_ensMean/$fcst_date.$var.3_4wk_EnsAvg.nc
+
+    # add back in hru dimension - need to do here, earlier execution was causing errors
+    set hruFile = $HUCdir_2wk_ensMean/$goodDate.$var.1_2wk_EnsAvg.nc
+    ncks -A -M -v hru $hruFile $HUCdir_2wk_ensMean/$fcst_date.$var.1_2wk_EnsAvg.nc
+    set hruFile = $HUCdir_2wk_ensMean/$goodDate.$var.2_3wk_EnsAvg.nc
+    ncks -A -M -v hru $hruFile $HUCdir_2wk_ensMean/$fcst_date.$var.2_3wk_EnsAvg.nc
+    set hruFile = $HUCdir_2wk_ensMean/$goodDate.$var.3_4wk_EnsAvg.nc
+    ncks -A -M -v hru $hruFile $HUCdir_2wk_ensMean/$fcst_date.$var.3_4wk_EnsAvg.nc
 
   end
 end

@@ -23,3 +23,11 @@ foreach Var (tref prec)
     endif
   end
 end
+
+# Need to remove dim Z from some models
+foreach Var (tref)
+  foreach model (COLA-RSMAS-CCSM4 NASA-GEOSS2S GFDL-CM2p5-FLOR-B01 GFDL-CM2p1-aer04)
+    echo $model $Var removing dim Z
+    ncwa -O -a Z $OutDir/$model.$Var.$Fcst.nc $OutDir/$model.$Var.$Fcst.nc
+  end
+end

@@ -38,7 +38,7 @@ foreach Var (tref prec)
         ncrename -O -d Y,lat -d X,lon -d L,time -v Y,lat -v X,lon -v L,time $File
 
         # average of S to remove dimension (fcst date)
-        ncwa -C -v $Var,lon,lat,time -a S $File $TmpDir/$File:t:r.nc
+        ncwa -O -C -v $Var,lon,lat,time -a S $File $TmpDir/$File:t:r.nc
 
         # regrid
         cdo remapbil,r720x360 $TmpDir/$File:t:r.nc $output
@@ -50,10 +50,10 @@ foreach Var (tref prec)
         set output = $cutDir/$File:t:r.nc
 
         # rename variables and dimensions - need to check this works
-        ncrename -d time,t -v $Var,$NewV -v time,fcst_time -v lat,latitude -v lon,longitude $File $nm_out
+        ncrename -O -d time,t -v $Var,$NewV -v time,fcst_time -v lat,latitude -v lon,longitude $File $nm_out
 
         # CONUS domain - 5,75N 185,305E
-        ncea -d lat,190,329 -d lon,370,609 $nm_out $output
+        ncea -O -d lat,190,329 -d lon,370,609 $nm_out $output
   end
 
   # loop over each file in the raw year directory

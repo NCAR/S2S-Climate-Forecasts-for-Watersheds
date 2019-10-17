@@ -173,8 +173,9 @@ new_num = df_anom %>% group_by(fcst_date) %>% summarize(count=n())
 new_date = max(as.Date(df_anom$fcst_date))
 
 ## save seperate files every month and decrease size of data
+n_mon = 6 # number of months of data displayed on S2S site
 if (day(new_date) == 1) {
-  date_end = new_date %m-% months(8)
+  date_end = new_date %m-% months(n_mon)
   
   # filter previous month of data
   date_mon = new_date %m-% months(1)
